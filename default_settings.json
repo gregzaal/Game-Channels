@@ -1,0 +1,12 @@
+{
+    "aliases": {},
+    "blacklist": [],
+    "enabled": false,
+    "requiredrole": "",
+    "playerthreshold": 4,
+    "admin_channel_id": 0,
+    "wrapper_category": 0,
+    "instructions_channel": 0,
+    "instructions_message": 0,
+    "subcommunities": {}
+}
