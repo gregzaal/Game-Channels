@@ -563,8 +563,8 @@ async def on_message(message):
             return
 
     # TODO Auto cleanup (note: returns above mean it rarely reaches here)
-    if channel.id == settings['instructions_channel']:
-        await message.delete()
+    # if channel.id == settings['instructions_channel']:
+    #     await message.delete()
 
 
 client.run(config['token'])
