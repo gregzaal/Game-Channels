@@ -285,7 +285,7 @@ async def join_subcommunity(guild, gname, user, channel=None, auto=False):
 
     if sc:
         if auto and user.id in sc["users"]:
-            return
+            return True
 
         if user.id not in sc["users"]:
             sc["users"].append(user.id)
@@ -305,10 +305,13 @@ async def join_subcommunity(guild, gname, user, channel=None, auto=False):
         else:
             if not auto:
                 await echo ("There was an error giving you permissions to the requested subcommunity :cry: Please poke an admin so that they can look into it.", channel)
-            return
+            return False
+
+        return True
     else:
         if not auto:
             await echo ("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
+            return False
 
 async def leave_subcommunity(guild, user, channel, gname=None):
     settings = get_serv_settings(guild.id)
@@ -435,25 +438,30 @@ async def on_message(message):
             if cmd == 'enable':
                 if settings['enabled']:
                     await echo("Already enabled. Use 'gc-disable' to turn off.", channel)
+                    await message.add_reaction("❌")
                 else:
                     await echo("Enabling subcommunities. Turn off with 'gc-disable'.", channel)
                     settings['enabled'] = True
                     set_serv_settings(guild.id, settings)
+                    await message.add_reaction("✅")
                 return
 
             elif cmd == 'disable':
                 if not settings['enabled']:
                     await echo("Already disabled. Use 'gc-enable' to turn on.", channel)
                     log("Enabling", guild)
+                    await message.add_reaction("❌")
                 else:
                     await echo("Disabling subcommunities. Turn on again with 'gc-enable'.", channel)
                     log("Disabling", guild)
                     settings['enabled'] = False
                     set_serv_settings(guild.id, settings)
+                    await message.add_reaction("✅")
                 return
 
             elif cmd == 'updateinfomessage':
                 await update_info_message(guild)
+                await message.add_reaction("✅")
                 return
 
             elif cmd == 'listroles':
@@ -468,6 +476,7 @@ async def on_message(message):
                             break
                     if not found_user:
                         await echo ("There is no user named \"" + username + "\"")
+                        await message.add_reaction("❌")
                         return
                 else:
                     # If no param is provided, show all roles in server
@@ -479,6 +488,7 @@ async def on_message(message):
                 for r in roles:
                     l.append(str(r.id)+"  \""+r.name+"\"  (Created on "+r.created_at.strftime("%Y/%m/%d")+")")
                 await echo('\n'.join(l), channel)
+                await message.add_reaction("✅")
                 return
 
             elif cmd == 'listchannels':
@@ -487,7 +497,7 @@ async def on_message(message):
                 scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
                 for scn in scs:
                     sc = settings["subcommunities"][scn]
-                    cat = get_wrapper_cat(guild)
+                    cat = await get_wrapper_cat(guild)
                     for ch in cat.channels:
                         if ch_filter == "" or ch_filter in ch.name:
                             text += "• **" + cat.name + "**"
@@ -495,17 +505,20 @@ async def on_message(message):
                             text += "\n"
                 text += "\n"
                 await echo (text, channel)
+                await message.add_reaction("✅")
                 return
 
             elif cmd == 'restrict':
                 role_id = strip_quotes(params_str)
                 if not role_id:
                     await echo ("You need to specifiy the id of the role. Use 'gc-listroles' to see the IDs of all roles, then do 'gc-restrict 123456789101112131'", channel)
+                    await message.add_reaction("❌")
                 else:
                     valid_ids = list([str(r.id) for r in guild.roles])
                     if role_id not in valid_ids:
                         await echo (valid_ids, channel)
                         await echo (role_id + " is not a valid id of any existing role. Use 'gc-listroles' to see the IDs of all roles.", channel)
+                        await message.add_reaction("❌")
                     else:
                         role = None
                         for r in guild.roles:
@@ -514,18 +527,22 @@ async def on_message(message):
                                 break
                         if role not in message.author.roles:
                             await echo ("You need to have this role yourself in order to restrict commands to it.", channel)
+                            await message.add_reaction("❌")
                         else:
                             settings['requiredrole'] = role.id
                             set_serv_settings(guild.id, settings)
                             await echo ("From now on, most commands will be restricted to users with the \"" + role.name + "\" role.", channel)
+                            await message.add_reaction("✅")
                 return
 
             elif cmd == 'new':
                 await create_subcommunity(guild, params_str, channel)
+                await message.add_reaction("✅")
                 return
 
             elif cmd == 'remove':
                 await remove_subcommunity(guild, channel=channel)
+                await message.add_reaction("✅")
                 return
 
             # TODO 'merge' command to join two communities - merge the user list and game names
@@ -533,14 +550,17 @@ async def on_message(message):
 
         # Commands all users can do
         if cmd == 'join':
-            await join_subcommunity(guild, params_str, message.author, channel)
+            success = await join_subcommunity(guild, params_str, message.author, channel)
+            await message.add_reaction("✅" if success else "❌")
             return
 
         elif cmd == 'leave':
             if params_str:
                 await leave_subcommunity(guild, message.author, channel, params_str)
+                await message.add_reaction("✅")
             else:
                 await leave_subcommunity(guild, message.author, channel)
+                await message.add_reaction("✅")
             return
 
         elif cmd == 'list':
@@ -554,15 +574,17 @@ async def on_message(message):
             text += "Use `gc-join Game Name` to join one of them. You will also automatically join them when Discord detects you playing that game.\n"
             text += "These communities are created automatically when 4 or more people in this server play that game. They can also be created manually by an admin."
             await echo (text, channel)
+            await message.add_reaction("✅")
             return
 
         else:
             text = "Sorry, `" + cmd + "` is not a recognised command"
             text += ", or you don't have permission to use it." if not has_permission else "."
             await echo(text, channel)
+            await message.add_reaction("❌")
             return
 
-    # TODO Auto cleanup (note: returns above mean it rarely reaches here)
+    # TODO Auto cleanup (note: returns above mean it rarely reaches here) - delete everything but the last 5 messages, unless they are younger than 24h
     # if channel.id == settings['instructions_channel']:
     #     await message.delete()
 
