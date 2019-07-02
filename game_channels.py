@@ -5,6 +5,12 @@ import asyncio
 import logging
 from datetime import datetime
 
+''' TODO
+Prune channels older than 8 months that haven't had *any* activity ever.
+If less than 10 players, just delete it. If more than 10 players, send message "This channel will be deleted if it still has no activity in the next week".
+Maybe keep roles around in case the game gets popular again?
+'''
+
 logging.basicConfig(level=logging.INFO)
 
 last_channel = None
@@ -209,37 +215,25 @@ async def initialize_server (guild):
     print ("ini end")
 
 async def create_subcommunity (guild, gname, reply_channel=None):
-    print (1)
     # Create role
     role_name = "Plays: "+gname
     role = await guild.create_role(name=role_name)
-    print (2)
     
     # Create channel
     wrapper = await get_wrapper_cat(guild)
-    print (3)
     cname = convert_to_valid_channel_name(gname)
-    print (4)
-    print (wrapper.id)
-    print (5)
     channel = await guild.create_text_channel(cname, category=wrapper)
-    print (6)
     await channel.set_permissions(guild.default_role, read_messages=False)
-    print (7)
     await channel.set_permissions(role, read_messages=True)
-    print (8)
     await echo("Created subcommunity for `"+gname+"` :smiley:", reply_channel)
-    print (9)
 
     settings = get_serv_settings(guild.id)
-    print (10)
 
     # Send welcome message
     text = "This channel for **" + gname + "** was just created automatically, have fun! :)"
     if "subcommunity_announcement" in settings:
         text = settings["subcommunity_announcement"].replace("##game_name##", gname)
     await echo(text, channel)
-    print (11)
 
     # Add record to json
     if gname not in settings['subcommunities']:
@@ -248,8 +242,6 @@ async def create_subcommunity (guild, gname, reply_channel=None):
         settings['subcommunities'][gname]["channel_id"] = channel.id
         settings['subcommunities'][gname]["games"] = [gname]
         set_serv_settings(guild.id, settings)
-        print (12)
-    print (13)
 
     return role
 
@@ -275,8 +267,11 @@ async def remove_subcommunity(guild, channel=None):
         # Remove record from json
         del settings['subcommunities'][scn]
         set_serv_settings(guild.id, settings)
+        return True
     else:
         await echo ("Subcommunity associated with this channel couldn't be found.", channel)
+    
+    return False
 
 async def join_subcommunity(guild, gname, user, channel=None, auto=False):
     settings = get_serv_settings(guild.id)
@@ -535,15 +530,30 @@ async def on_message(message):
                             await message.add_reaction("✅")
                 return
 
+            elif cmd == 'playerthreshold':
+                thresh = strip_quotes(params_str)
+                try:
+                    int(thresh)
+                except ValueError:
+                    await echo ("Invalid input: `"+thresh+"`, please type a valid number. E.g: `gc-playerthreshold 4`", channel)
+                    await message.add_reaction("❌")
+                    return
+                else:
+                    settings['playerthreshold'] = thresh
+                    set_serv_settings(guild.id, settings)
+                    await message.add_reaction("✅")
+                    return
+
             elif cmd == 'new':
                 await create_subcommunity(guild, params_str, channel)
                 await message.add_reaction("✅")
                 return
 
-            elif cmd == 'remove':
-                await remove_subcommunity(guild, channel=channel)
-                await message.add_reaction("✅")
-                return
+        elif cmd == 'remove':
+            # TODO currently unless the bot is an admin, it can't delete a channel since it doesn't have the role required to see it. temporarily give itself the role and then remove it.
+            success = await remove_subcommunity(guild, channel=channel)
+            await message.add_reaction("✅" if success else "❌")
+            return
 
             # TODO 'merge' command to join two communities - merge the user list and game names
             # TODO 'ignore' a game
@@ -572,7 +582,9 @@ async def on_message(message):
                 text += "\n"
             text += "\n"
             text += "Use `gc-join Game Name` to join one of them. You will also automatically join them when Discord detects you playing that game.\n"
-            text += "These communities are created automatically when 4 or more people in this server play that game. They can also be created manually by an admin."
+            text += "These communities are created automatically when "
+            text += settings["playerthreshold"]
+            text += " or more people in this server play that game. They can also be created manually by an admin."
             await echo (text, channel)
             await message.add_reaction("✅")
             return
