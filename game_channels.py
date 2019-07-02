@@ -105,9 +105,9 @@ def ascii_only(s):
 
 
 def convert_to_valid_channel_name(s):
-    allowed_characters = "qwertyuiopasdfghjklzxcvbnm-_1234567890"
+    allowed_characters = "qwertyuiopasdfghjklzxcvbnm-_ 1234567890"
     s = s.lower()
-    s = s.replace(' ', '-')
+    s = s.replace(' ', ' ')
     sn = ""
     for c in s:
         if c in allowed_characters:
