@@ -563,7 +563,7 @@ async def on_message(message):
                 await message.add_reaction("✅")
                 return
 
-        elif cmd == 'remove':
+            elif cmd == 'remove':
                 gname = strip_quotes(params_str)
                 if gname:
                     success = await remove_subcommunity(guild, channel=channel, gname=gname)
