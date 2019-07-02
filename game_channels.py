@@ -242,6 +242,8 @@ async def create_subcommunity (guild, gname, reply_channel=None):
         settings['subcommunities'][gname]["channel_id"] = channel.id
         settings['subcommunities'][gname]["games"] = [gname]
         set_serv_settings(guild.id, settings)
+        
+    await update_info_message(guild)
 
     return role
 
