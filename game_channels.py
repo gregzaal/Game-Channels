@@ -656,10 +656,9 @@ async def on_message(message):
     # Cleanup instructions_channel - delete everything older than 24h
     if channel.id == settings['instructions_channel']:
         old = datetime.today() - timedelta(days=1)
-        async for message in channel.history(before=old):
-            if message.id != settings['instructions_message']:
-                await echo("Delete: `" + message.content + "`.", channel)
-        # await message.delete()
+        async for m in channel.history(before=old):
+            if m.id != settings['instructions_message']:
+                await m.delete()
 
 
 client.run(config['token'])
