@@ -551,11 +551,11 @@ async def on_message(message):
                 await message.add_reaction("✅")
                 return
 
-        elif cmd == 'remove':
-            # TODO currently unless the bot is an admin, it can't delete a channel since it doesn't have the role required to see it. temporarily give itself the role and then remove it.
-            success = await remove_subcommunity(guild, channel=channel)
-            await message.add_reaction("✅" if success else "❌")
-            return
+            elif cmd == 'remove':
+                # TODO currently unless the bot is an admin, it can't delete a channel since it doesn't have the role required to see it. temporarily give itself the role and then remove it.
+                success = await remove_subcommunity(guild, channel=channel)
+                await message.add_reaction("✅" if success else "❌")
+                return
 
             # TODO 'merge' command to join two communities - merge the user list and game names
             # TODO 'ignore' a game
