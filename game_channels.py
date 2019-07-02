@@ -304,6 +304,7 @@ async def join_subcommunity(guild, gname, user, channel=None, auto=False):
                 await echo ("There was an error giving you permissions to the requested subcommunity :cry: Please poke an admin so that they can look into it.", channel)
             return False
 
+        await update_info_message(guild)
         return True
     else:
         if not auto:
