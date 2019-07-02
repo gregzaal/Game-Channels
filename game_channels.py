@@ -279,6 +279,7 @@ async def remove_subcommunity(guild, channel=None, gname=None):
             # Remove record from json
             del settings['subcommunities'][scn]
             set_serv_settings(guild.id, settings)
+            await update_info_message(guild)
             return True
         else:
             await echo ("Subcommunity associated with this channel couldn't be found.", channel)
