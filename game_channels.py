@@ -3,7 +3,7 @@ import json
 import discord
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 ''' TODO
 Prune channels older than 8 months that haven't had *any* activity ever.
