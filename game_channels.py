@@ -247,31 +247,42 @@ async def create_subcommunity (guild, gname, reply_channel=None):
 
     return role
 
-async def remove_subcommunity(guild, channel=None):
+async def remove_subcommunity(guild, channel=None, gname=None):
     settings = get_serv_settings(guild.id)
+    
+    if gname is not None:
+        scn, sc = await find_subcommunity(guild, gname)
+        if sc:
+            channel = guild.get_channel(sc['channel_id'])
+        else:
+            if channel:
+                await echo ("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
+            return False
 
-    # Find SC in json using channel ID
-    sc = None
-    for scn in settings['subcommunities']:
-        if settings['subcommunities'][scn]['channel_id'] == channel.id:
-            sc = settings['subcommunities'][scn]
-            break
+    if channel is not None:
+        # Find SC in json using channel ID
+        sc = None
+        for scn in settings['subcommunities']:
+            if settings['subcommunities'][scn]['channel_id'] == channel.id:
+                sc = settings['subcommunities'][scn]
+                break
 
-    if sc:
-        # Remove role
-        for r in guild.roles:
-            if r.id == sc["role_id"]:
-                await r.delete()
+        if sc:
+            # Remove role
+            for r in guild.roles:
+                if r.id == sc["role_id"]:
+                    await r.delete()
 
-        # Remove channel
-        await channel.delete()
+            # Remove channel
+            await channel.delete()
 
-        # Remove record from json
-        del settings['subcommunities'][scn]
-        set_serv_settings(guild.id, settings)
-        return True
-    else:
-        await echo ("Subcommunity associated with this channel couldn't be found.", channel)
+            # Remove record from json
+            del settings['subcommunities'][scn]
+            set_serv_settings(guild.id, settings)
+            return True
+        else:
+            await echo ("Subcommunity associated with this channel couldn't be found.", channel)
+            return False
     
     return False
 
@@ -552,9 +563,12 @@ async def on_message(message):
                 await message.add_reaction("✅")
                 return
 
-            elif cmd == 'remove':
-                # TODO currently unless the bot is an admin, it can't delete a channel since it doesn't have the role required to see it. temporarily give itself the role and then remove it.
-                success = await remove_subcommunity(guild, channel=channel)
+        elif cmd == 'remove':
+                gname = strip_quotes(params_str)
+                if gname:
+                    success = await remove_subcommunity(guild, channel=channel, gname=gname)
+                else:
+                    success = await remove_subcommunity(guild, channel=channel)
                 await message.add_reaction("✅" if success else "❌")
                 return
 
