@@ -7,7 +7,8 @@ from datetime import datetime
 
 ''' TODO
 Prune channels older than 8 months that haven't had *any* activity ever.
-If less than 10 players, just delete it. If more than 10 players, send message "This channel will be deleted if it still has no activity in the next week".
+If less than 10 players, just delete it.
+If more than 10 players, send message "This channel will be deleted if it still has no activity in the next week".
 Maybe keep roles around in case the game gets popular again?
 '''
 
@@ -15,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 last_channel = None
 script_dir = os.path.dirname(os.path.realpath(__file__))
-script_dir = script_dir+('/' if not script_dir.endswith('/') else '')
+script_dir = script_dir + ('/' if not script_dir.endswith('/') else '')
 
 default_sc_dict = {
     "role_id": 0,
@@ -25,10 +26,12 @@ default_sc_dict = {
     "users_who_left": []
 }
 
+
 def read_json(fp):
     with open(fp, 'r') as f:
         data = json.load(f)
     return data
+
 
 def write_json(fp, data):
     d = os.path.dirname(fp)
@@ -37,31 +40,36 @@ def write_json(fp, data):
     with open(fp, 'w') as f:
         f.write(json.dumps(data, f, indent=4, sort_keys=True))
 
+
 def get_config():
     global script_dir
     cf = os.path.join(script_dir, 'config.json')
     if not os.path.exists(cf):
-        print ("Config file doesn't exist!")
+        print("Config file doesn't exist!")
         import sys
         sys.exit(0)
     return read_json(cf)
 
 config = get_config()
 
+
 def get_serv_settings(serv_id):
     global script_dir
-    fp = os.path.join(script_dir, 'guilds', str(serv_id)+'.json')
+    fp = os.path.join(script_dir, 'guilds', str(serv_id) + '.json')
     if not os.path.exists(fp):
         write_json(fp, read_json(os.path.join(script_dir, 'default_settings.json')))
     return read_json(fp)
 
+
 def set_serv_settings(serv_id, settings):
     global script_dir
-    fp = os.path.join(script_dir, 'guilds', str(serv_id)+'.json')
+    fp = os.path.join(script_dir, 'guilds', str(serv_id) + '.json')
     return write_json(fp, settings)
 
+
 def ldir(o):
-    return '[\n'+(',\n'.join(dir(o)))+'\n]'
+    return '[\n' + (',\n'.join(dir(o))) + '\n]'
+
 
 def fmsg(m):
     # Format message to display in a code block
@@ -69,6 +77,7 @@ def fmsg(m):
     s += str(m)
     s += '\n```'
     return s
+
 
 def strip_quotes(s):
     chars_to_strip = ['\'', '"', ' ']
@@ -83,15 +92,17 @@ def strip_quotes(s):
             s = s[:-1]
     return s
 
+
 def ascii_only(s):
     ns = ""
-    printable_chars = list([chr(i) for i in range(32,127)])
+    printable_chars = list([chr(i) for i in range(32, 127)])
     for c in s:
         if c in printable_chars:
             ns += c
         else:
             ns += '_'
     return ns
+
 
 def convert_to_valid_channel_name(s):
     allowed_characters = "qwertyuiopasdfghjklzxcvbnm-_1234567890"
@@ -103,20 +114,22 @@ def convert_to_valid_channel_name(s):
             sn += c
     return sn
 
+
 def log(msg, guild=None):
     text = datetime.now().strftime("%Y-%m-%d %H:%M")
     text += ' '
     if guild:
-        text += '['+guild.name+']'
+        text += '[' + guild.name + ']'
         text += ' '
     text += str(ascii_only(msg))
     print(text)
 
-async def echo (msg, channel='auto', guild=None):
+
+async def echo(msg, channel='auto', guild=None):
     global last_channel
     if channel == 'auto':
         channel = last_channel
-    elif channel == None:
+    elif channel is None:
         log(msg, guild)
         return
     else:
@@ -129,12 +142,13 @@ async def echo (msg, channel='auto', guild=None):
         sent_msg = await catch_http_error(channel.send, msg)
     else:
         # Send message in chunks if it's longer than max_chars
-        chunks = list([msg[i:i+max_chars] for i in range(0, len(msg), max_chars)])
+        chunks = list([msg[i:i + max_chars] for i in range(0, len(msg), max_chars)])
         for c in chunks:
             sent_msg = await catch_http_error(channel.send, c)
     return sent_msg
 
-async def catch_http_error (function, *args, **kwargs):
+
+async def catch_http_error(function, *args, **kwargs):
     try:
         if args or kwargs:
             if args and not kwargs:
@@ -149,32 +163,36 @@ async def catch_http_error (function, *args, **kwargs):
     except discord.errors.HTTPException:
         import traceback
         print(traceback.format_exc())
-        log ("   !! ENCOUNTERED HTTP ERROR IN FUNC " + function.__name__ + " !!")
+        log("   !! ENCOUNTERED HTTP ERROR IN FUNC " + function.__name__ + " !!")
 
-async def get_admin_channel (guild):
+
+async def get_admin_channel(guild):
     settings = get_serv_settings(guild.id)
     for ch in guild.channels:
         if ch.id == settings['admin_channel_id']:
             return ch
     return None
 
-async def update_info_message (guild):
+
+async def update_info_message(guild):
     settings = get_serv_settings(guild.id)
     ch = guild.get_channel(settings['instructions_channel'])
     msg = await ch.get_message(settings['instructions_message'])
     text = "This server has channels for the following games:\n\n"
     scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
     for sc in scs:
-        text += "• **"+sc+"**"
+        text += "• **" + sc + "**"
         text += "  (" + str(len(settings["subcommunities"][sc]["users"])) + ")"
         text += "\n"
     text += "\n"
-    text += "Use `gc-join Game Name` below to join one of them. You will also automatically join them when Discord detects you playing that game.\n"
+    text += "Use `gc-join Game Name` below to join one of them. "
+    text += "You will also automatically join them when Discord detects you playing that game.\n"
     text += "These channels are created automatically when 4 or more people in this server play that game.\n"
     text += "Messages in this channel will automatically be deleted after a while."
     await msg.edit(content=text)
 
-async def find_subcommunity (guild, keyword):
+
+async def find_subcommunity(guild, keyword):
     ''' Return a tuple of (name, subcommunity) from a given keyword by matching SC name, game name and channel name. '''
 
     settings = get_serv_settings(guild.id)
@@ -194,7 +212,8 @@ async def find_subcommunity (guild, keyword):
 
     return (None, None)  # Couldn't find SC
 
-async def get_wrapper_cat (guild):
+
+async def get_wrapper_cat(guild):
     settings = get_serv_settings(guild.id)
     for cat in guild.categories:
         if cat.id == settings['wrapper_category']:
@@ -202,21 +221,24 @@ async def get_wrapper_cat (guild):
     cat = await initialize_server(guild)  # no wrapper found, initilize server with one
     return cat
 
-async def initialize_server (guild):
-    print ("ini start")
+
+async def initialize_server(guild):
+    print("ini start")
     settings = get_serv_settings(guild.id)
     category = await guild.create_category("🎮 Games 🎮")
     settings['wrapper_category'] = category.id
     info_ch = await guild.create_text_channel("games-list…", category=category)
     settings['instructions_channel'] = info_ch.id
-    im = await echo("This message will update itself automatically with a list of games that people in this server play.", info_ch)
+    im = await echo("This message will update itself automatically " +
+                    "with a list of games that people in this server play.", info_ch)
     settings['instructions_message'] = im.id
     set_serv_settings(guild.id, settings)
-    print ("ini end")
+    print("ini end")
 
-async def create_subcommunity (guild, gname, reply_channel=None):
+
+async def create_subcommunity(guild, gname, reply_channel=None):
     # Create role
-    role_name = "Plays: "+gname
+    role_name = "Plays: " + gname
     role = await guild.create_role(name=role_name)
     
     # Create channel
@@ -225,7 +247,7 @@ async def create_subcommunity (guild, gname, reply_channel=None):
     channel = await guild.create_text_channel(cname, category=wrapper)
     await channel.set_permissions(guild.default_role, read_messages=False)
     await channel.set_permissions(role, read_messages=True)
-    await echo("Created subcommunity for `"+gname+"` :smiley:", reply_channel)
+    await echo("Created subcommunity for `" + gname + "` :smiley:", reply_channel)
 
     settings = get_serv_settings(guild.id)
 
@@ -247,6 +269,7 @@ async def create_subcommunity (guild, gname, reply_channel=None):
 
     return role
 
+
 async def remove_subcommunity(guild, channel=None, gname=None):
     settings = get_serv_settings(guild.id)
     
@@ -256,7 +279,7 @@ async def remove_subcommunity(guild, channel=None, gname=None):
             channel = guild.get_channel(sc['channel_id'])
         else:
             if channel:
-                await echo ("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
+                await echo("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
             return False
 
     if channel is not None:
@@ -282,10 +305,11 @@ async def remove_subcommunity(guild, channel=None, gname=None):
             await update_info_message(guild)
             return True
         else:
-            await echo ("Subcommunity associated with this channel couldn't be found.", channel)
+            await echo("Subcommunity associated with this channel couldn't be found.", channel)
             return False
     
     return False
+
 
 async def join_subcommunity(guild, gname, user, channel=None, auto=False):
     settings = get_serv_settings(guild.id)
@@ -313,15 +337,17 @@ async def join_subcommunity(guild, gname, user, channel=None, auto=False):
             await user.add_roles(role)
         else:
             if not auto:
-                await echo ("There was an error giving you permissions to the requested subcommunity :cry: Please poke an admin so that they can look into it.", channel)
+                await echo("There was an error giving you permissions to the requested subcommunity :cry: " +
+                           "Please poke an admin so that they can look into it.", channel)
             return False
 
         await update_info_message(guild)
         return True
     else:
         if not auto:
-            await echo ("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
+            await echo("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
             return False
+
 
 async def leave_subcommunity(guild, user, channel, gname=None):
     settings = get_serv_settings(guild.id)
@@ -329,7 +355,8 @@ async def leave_subcommunity(guild, user, channel, gname=None):
     if not gname:
         gname = channel.name
     if not gname:
-        await echo ("You need to type this in the channel for the game you want to leave, or specify the game name.", channel)
+        await echo("You need to type this in the channel for the game you want to leave, " +
+                   "or specify the game name.", channel)
         return
 
     scn, sc = await find_subcommunity(guild, gname)
@@ -350,8 +377,9 @@ async def leave_subcommunity(guild, user, channel, gname=None):
         if role:
             await user.remove_roles(role)
     else:
-        await echo ("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
+        await echo("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
     return
+
 
 async def update_subcommunities(guild, channel=None):
     settings = get_serv_settings(guild.id)
@@ -405,12 +433,12 @@ class MyClient(discord.Client):
         self.bg_task = self.loop.create_task(self.background_task())
 
     async def on_ready(self):
-        print ('Logged in as')
-        print (self.user.name)
-        print (self.user.id)
+        print('Logged in as')
+        print(self.user.name)
+        print(self.user.id)
         curtime = datetime.now().strftime("%Y-%m-%d %H:%M")
-        print (curtime)
-        print ('-'*len(str(self.user.id)))
+        print(curtime)
+        print('-' * len(str(self.user.id)))
         for s in self.guilds:
             await update_subcommunities(s, None)  # Run once initially. Background task doesn't like printing errors :/
 
@@ -421,7 +449,9 @@ class MyClient(discord.Client):
             for s in self.guilds:
                 await update_subcommunities(s, None)
 
+
 client = MyClient()
+
 
 @client.event
 async def on_message(message):
@@ -485,18 +515,18 @@ async def on_message(message):
                             found_user = True
                             break
                     if not found_user:
-                        await echo ("There is no user named \"" + username + "\"")
+                        await echo("There is no user named \"" + username + "\"")
                         await message.add_reaction("❌")
                         return
                 else:
                     # If no param is provided, show all roles in server
                     roles = guild.roles
 
-                l = ["ID" + ' '*18 + "\"Name\"  (Creation Date)"]
-                l.append('='*len(l[0]))
+                l = ["ID" + ' ' * 18 + "\"Name\"  (Creation Date)"]
+                l.append('=' * len(l[0]))
                 roles = sorted(roles, key=lambda x: x.created_at)
                 for r in roles:
-                    l.append(str(r.id)+"  \""+r.name+"\"  (Created on "+r.created_at.strftime("%Y/%m/%d")+")")
+                    l.append(str(r.id) + "  \"" + r.name + "\"  (Created on " + r.created_at.strftime("%Y/%m/%d") + ")")
                 await echo('\n'.join(l), channel)
                 await message.add_reaction("✅")
                 return
@@ -514,34 +544,39 @@ async def on_message(message):
                             text += " > " + ch.name + " `" + str(ch.id) + "`"
                             text += "\n"
                 text += "\n"
-                await echo (text, channel)
+                await echo(text, channel)
                 await message.add_reaction("✅")
                 return
 
             elif cmd == 'restrict':
                 role_id = strip_quotes(params_str)
                 if not role_id:
-                    await echo ("You need to specifiy the id of the role. Use 'gc-listroles' to see the IDs of all roles, then do 'gc-restrict 123456789101112131'", channel)
+                    await echo("You need to specifiy the id of the role. " +
+                               "Use 'gc-listroles' to see the IDs of all roles, " +
+                               "then do 'gc-restrict 123456789101112131'", channel)
                     await message.add_reaction("❌")
                 else:
                     valid_ids = list([str(r.id) for r in guild.roles])
                     if role_id not in valid_ids:
-                        await echo (valid_ids, channel)
-                        await echo (role_id + " is not a valid id of any existing role. Use 'gc-listroles' to see the IDs of all roles.", channel)
+                        await echo(valid_ids, channel)
+                        await echo(role_id + " is not a valid id of any existing role. " +
+                                   "Use 'gc-listroles' to see the IDs of all roles.", channel)
                         await message.add_reaction("❌")
                     else:
                         role = None
                         for r in guild.roles:
-                            if str(r.id) == role_id:    
+                            if str(r.id) == role_id:
                                 role = r
                                 break
                         if role not in message.author.roles:
-                            await echo ("You need to have this role yourself in order to restrict commands to it.", channel)
+                            await echo("You need to have this role yourself in order to restrict commands to it.",
+                                       channel)
                             await message.add_reaction("❌")
                         else:
                             settings['requiredrole'] = role.id
                             set_serv_settings(guild.id, settings)
-                            await echo ("From now on, most commands will be restricted to users with the \"" + role.name + "\" role.", channel)
+                            await echo("From now on, most commands will be restricted to users with the \"" +
+                                       role.name + "\" role.", channel)
                             await message.add_reaction("✅")
                 return
 
@@ -550,7 +585,8 @@ async def on_message(message):
                 try:
                     int(thresh)
                 except ValueError:
-                    await echo ("Invalid input: `"+thresh+"`, please type a valid number. E.g: `gc-playerthreshold 4`", channel)
+                    await echo("Invalid input: `" + thresh + "`, please type a valid number. " +
+                               "E.g: `gc-playerthreshold 4`", channel)
                     await message.add_reaction("❌")
                     return
                 else:
@@ -595,15 +631,16 @@ async def on_message(message):
             text = "This server has communities for the following games:\n\n"
             scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
             for sc in scs:
-                text += "• **"+sc+"**"
+                text += "• **" + sc + "**"
                 text += "  (" + str(len(settings["subcommunities"][sc]["users"])) + ")"
                 text += "\n"
             text += "\n"
-            text += "Use `gc-join Game Name` to join one of them. You will also automatically join them when Discord detects you playing that game.\n"
+            text += "Use `gc-join Game Name` to join one of them. "
+            text += "You will also automatically join them when Discord detects you playing that game.\n"
             text += "These communities are created automatically when "
             text += settings["playerthreshold"]
             text += " or more people in this server play that game. They can also be created manually by an admin."
-            await echo (text, channel)
+            await echo(text, channel)
             await message.add_reaction("✅")
             return
 
@@ -614,7 +651,7 @@ async def on_message(message):
             await message.add_reaction("❌")
             return
 
-    # TODO Auto cleanup (note: returns above mean it rarely reaches here) - delete everything but the last 5 messages, unless they are younger than 24h
+    # TODO Auto cleanup - delete everything but the last 5 messages, unless they are younger than 24h
     # if channel.id == settings['instructions_channel']:
     #     await message.delete()
 
