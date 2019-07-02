@@ -539,7 +539,7 @@ async def on_message(message):
                     await message.add_reaction("❌")
                     return
                 else:
-                    settings['playerthreshold'] = thresh
+                    settings['playerthreshold'] = int(thresh)
                     set_serv_settings(guild.id, settings)
                     await message.add_reaction("✅")
                     return
