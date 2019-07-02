@@ -376,6 +376,8 @@ async def leave_subcommunity(guild, user, channel, gname=None):
                 break
         if role:
             await user.remove_roles(role)
+            
+        await update_info_message(guild)
     else:
         await echo("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
     return
@@ -651,9 +653,13 @@ async def on_message(message):
             await message.add_reaction("❌")
             return
 
-    # TODO Auto cleanup - delete everything but the last 5 messages, unless they are younger than 24h
-    # if channel.id == settings['instructions_channel']:
-    #     await message.delete()
+    # Cleanup instructions_channel - delete everything older than 24h
+    if channel.id == settings['instructions_channel']:
+        old = datetime.today() - timedelta(days=1)
+        async for message in channel.history(before=old):
+            if message.id != settings['instructions_message']:
+                await echo("Delete: `" + message.content + "`.", channel)
+        # await message.delete()
 
 
 client.run(config['token'])
