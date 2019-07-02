@@ -638,7 +638,7 @@ async def on_message(message):
                 text += "\n"
             text += "\n"
             text += "Use `gc-join Game Name` to join one of them. "
-            text += "You will also automatically join them when Discord detects you playing that game.\n"
+            text += "You will also **automatically join them** when Discord detects you playing that game.\n"
             text += "These communities are created automatically when "
             text += settings["playerthreshold"]
             text += " or more people in this server play that game. They can also be created manually by an admin."
