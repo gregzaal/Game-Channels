@@ -187,7 +187,9 @@ async def update_info_message(guild):
     text += "\n"
     text += "Use `gc-join Game Name` below to join one of them. "
     text += "You will also automatically join them when Discord detects you playing that game.\n"
-    text += "These channels are created automatically when 4 or more people in this server play that game.\n"
+    text += "These channels are created automatically when "
+    text += str(settings["playerthreshold"])
+    text += " or more people in this server play that game.\n"
     text += "Messages in this channel will automatically be deleted after a while."
     await msg.edit(content=text)
 
@@ -640,7 +642,7 @@ async def on_message(message):
             text += "Use `gc-join Game Name` to join one of them. "
             text += "You will also **automatically join them** when Discord detects you playing that game.\n"
             text += "These communities are created automatically when "
-            text += settings["playerthreshold"]
+            text += str(settings["playerthreshold"])
             text += " or more people in this server play that game. They can also be created manually by an admin."
             await echo(text, channel)
             await message.add_reaction("✅")
