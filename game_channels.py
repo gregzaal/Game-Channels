@@ -467,6 +467,13 @@ async def on_message(message):
         # Don't respond to self
         return
 
+    # Cleanup instructions_channel - delete everything older than 24h
+    if channel.id == settings['instructions_channel']:
+        old = datetime.today() - timedelta(days=1)
+        async for m in channel.history(before=old):
+            if m.id != settings['instructions_message']:
+                await m.delete()
+
     # Commands
     if message.content.lower().startswith('gc-'):
         msg = message.content[3:]  # Remove prefix
@@ -654,13 +661,6 @@ async def on_message(message):
             await echo(text, channel)
             await message.add_reaction("❌")
             return
-
-    # Cleanup instructions_channel - delete everything older than 24h
-    if channel.id == settings['instructions_channel']:
-        old = datetime.today() - timedelta(days=1)
-        async for m in channel.history(before=old):
-            if m.id != settings['instructions_message']:
-                await m.delete()
 
 
 client.run(config['token'])
