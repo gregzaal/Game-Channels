@@ -405,14 +405,13 @@ async def update_subcommunities(guild, channel=None):
     for gname in games_dict:
         scn, sc = await find_subcommunity(guild, gname)
         if len(games_dict[gname]) >= settings["playerthreshold"]:
-            role = None
             if not sc:
-                role = await create_subcommunity(guild, gname, admin_channel)
-            else:
-                for r in guild.roles:
-                    if r.id == sc["role_id"]:
-                        role = r
-                        break
+                await create_subcommunity(guild, gname, admin_channel)
+            # else:
+            #     for r in guild.roles:
+            #         if r.id == sc["role_id"]:
+            #             role = r
+            #             break
         if sc:
             for m in games_dict[gname]:
                 if m.id not in sc["users_who_left"]:
