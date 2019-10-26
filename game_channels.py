@@ -242,7 +242,7 @@ async def create_subcommunity(guild, gname, reply_channel=None):
     # Create role
     role_name = "Plays: " + gname
     role = await guild.create_role(name=role_name)
-    
+
     # Create channel
     wrapper = await get_wrapper_cat(guild)
     cname = convert_to_valid_channel_name(gname)
@@ -266,7 +266,7 @@ async def create_subcommunity(guild, gname, reply_channel=None):
         settings['subcommunities'][gname]["channel_id"] = channel.id
         settings['subcommunities'][gname]["games"] = [gname]
         set_serv_settings(guild.id, settings)
-        
+
     await update_info_message(guild)
 
     return role
@@ -274,7 +274,7 @@ async def create_subcommunity(guild, gname, reply_channel=None):
 
 async def remove_subcommunity(guild, channel=None, gname=None):
     settings = get_serv_settings(guild.id)
-    
+
     if gname is not None:
         scn, sc = await find_subcommunity(guild, gname)
         if sc:
@@ -309,7 +309,7 @@ async def remove_subcommunity(guild, channel=None, gname=None):
         else:
             await echo("Subcommunity associated with this channel couldn't be found.", channel)
             return False
-    
+
     return False
 
 
@@ -378,7 +378,7 @@ async def leave_subcommunity(guild, user, channel, gname=None):
                 break
         if role:
             await user.remove_roles(role)
-            
+
         await update_info_message(guild)
     else:
         await echo("Couldn't find any subcommunity using the keyword `" + gname + "`.", channel)
@@ -396,11 +396,12 @@ async def update_subcommunities(guild, channel=None):
     games_dict = {}
     for m in guild.members:
         if m.activity and not m.bot:
-            gname = m.activity.name
-            if gname in games_dict:
-                games_dict[gname].append(m)
-            else:
-                games_dict[gname] = [m]
+            if m.activity.type == discord.ActivityType.playing:
+                gname = m.activity.name
+                if gname in games_dict:
+                    games_dict[gname].append(m)
+                else:
+                    games_dict[gname] = [m]
     for gname in games_dict:
         scn, sc = await find_subcommunity(guild, gname)
         if len(games_dict[gname]) >= settings["playerthreshold"]:
