@@ -177,7 +177,7 @@ async def get_admin_channel(guild):
 async def update_info_message(guild):
     settings = get_serv_settings(guild.id)
     ch = guild.get_channel(settings['instructions_channel'])
-    msg = await ch.get_message(settings['instructions_message'])
+    msg = await ch.fetch_message(settings['instructions_message'])
     text = "This server has channels for the following games:\n\n"
     scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
     for sc in scs:
