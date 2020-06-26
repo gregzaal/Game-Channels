@@ -157,8 +157,8 @@ async def update_info_message(guild):
     settings = get_serv_settings(guild.id)
     ch = guild.get_channel(settings['instructions_channel'])
     msg = await ch.fetch_message(settings['instructions_message'])
-    text = "This server has channels for the following games:\n\n"
     scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
+    text = "This server has dedicated channels for the following {} games:\n\n".format(len(scs))
     for sc in scs:
         role = guild.get_role(settings["subcommunities"][sc]['role_id'])
         num = len(role.members) if role is not None else 0
