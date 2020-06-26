@@ -24,7 +24,6 @@ default_sc_dict = {
     "role_id": 0,
     "channel_id": 0,
     "games": [],
-    "users": [],
     "users_who_left": []
 }
 
@@ -161,8 +160,10 @@ async def update_info_message(guild):
     text = "This server has channels for the following games:\n\n"
     scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
     for sc in scs:
+        role = guild.get_role(settings["subcommunities"][sc]['role_id'])
+        num = len(role.members) if role is not None else 0
         text += "• **" + sc + "**"
-        text += "  (" + str(len(settings["subcommunities"][sc]["users"])) + ")"
+        text += "  (" + str(num) + ")"
         text += "\n"
     text += "\n"
     text += "Use `gc-join Game Name` below to join one of them. "
@@ -294,30 +295,49 @@ async def remove_subcommunity(guild, channel=None, gname=None):
     return False
 
 
-async def join_subcommunity(guild, gname, user, channel=None, auto=False):
+async def join_subcommunity(guild, gname, user, channel=None, auto=False, role=None):
     settings = get_serv_settings(guild.id)
 
     scn, sc = await find_subcommunity(guild, gname)
 
     if sc:
-        if auto and user.id in sc["users"]:
+        if role is None:
+            for r in guild.roles:
+                if r.id == sc["role_id"]:
+                    role = r
+                    break
+        if role is None and not auto:
+            await channel.send("It seems the role for that game no longer exists :(")
+            return False
+
+        if auto and user in role.members:
             return True
 
-        if user.id not in sc["users"]:
-            sc["users"].append(user.id)
         if user.id in sc["users_who_left"]:
             sc["users_who_left"].remove(user.id)
         settings["subcommunities"][scn] = sc
         set_serv_settings(guild.id, settings)
         log(str(user.id) + " joined " + scn, guild)
 
-        role = None
-        for r in guild.roles:
-            if r.id == sc["role_id"]:
-                role = r
-                break
         if role:
             await user.add_roles(role)
+            if 'welcome' in settings and settings['welcome'] is not None:
+                wc = guild.get_channel(sc['channel_id'])
+                if wc:
+                    e = discord.Embed(color=discord.Color.from_rgb(205, 220, 57))
+                    instructions_message = await guild.get_channel(settings['instructions_channel']).fetch_message(
+                        settings['instructions_message'])
+                    e.title = settings['welcome'].replace("#USER#", user.display_name).replace("#GNAME#", scn)
+                    e.description = ("{} was added automatically because this is the first time we noticed them "
+                                     "playing {}.\n[More info.]({})".format(
+                                         user.mention,
+                                         ' / '.join(sc['games']),
+                                         instructions_message.jump_url
+                                     ))
+                    if not auto:
+                        e.description = "{} added themselves manually using the join command.".format(user.mention)
+                    e.set_thumbnail(url=user.avatar_url_as(size=128))
+                    await wc.send(embed=e)
         else:
             if not auto:
                 await channel.send("There was an error giving you permissions to the requested subcommunity :cry: " +
@@ -345,20 +365,19 @@ async def leave_subcommunity(guild, user, channel, gname=None):
     scn, sc = await find_subcommunity(guild, gname)
 
     if sc:
-        if user.id in sc["users"]:
-            sc["users"].remove(user.id)
-            sc["users_who_left"].append(user.id)
-            settings["subcommunities"][scn] = sc
-            set_serv_settings(guild.id, settings)
-            log(str(user.id) + " left " + scn, guild)
-
         role = None
         for r in guild.roles:
             if r.id == sc["role_id"]:
                 role = r
                 break
-        if role:
+        if role and user.id in role.members:
             await user.remove_roles(role)
+            sc["users_who_left"].append(user.id)
+            settings["subcommunities"][scn] = sc
+            set_serv_settings(guild.id, settings)
+            log(str(user.id) + " left " + scn, guild)
+        else:
+            await channel.send("It looks like you aren't in that subcommunity.")
 
         await update_info_message(guild)
     else:
@@ -394,9 +413,14 @@ async def update_subcommunities(guild, channel=None):
             #             role = r
             #             break
         if sc:
+            role = None
+            for r in guild.roles:
+                if r.id == sc["role_id"]:
+                    role = r
+                    break
             for m in games_dict[gname]:
                 if m.id not in sc["users_who_left"]:
-                    await join_subcommunity(guild, gname, m, auto=True)
+                    await join_subcommunity(guild, gname, m, auto=True, role=role)
 
     # TODO Order channels by activity
     # for scn in settings['subcommunities']:
@@ -413,8 +437,8 @@ async def update_loop(client):
     if not client.is_ready():
         return
 
-    for s in client.guilds:
-        await update_subcommunities(s, None)
+    for g in client.guilds:
+        await update_subcommunities(g, None)
 
 
 class MyClient(discord.Client):
@@ -681,23 +705,6 @@ async def on_message(message):
             else:
                 await leave_subcommunity(guild, message.author, channel)
                 await message.add_reaction("✅")
-            return
-
-        elif cmd == 'list':
-            text = "This server has communities for the following games:\n\n"
-            scs = sorted(settings["subcommunities"], key=lambda s: s.lower())
-            for sc in scs:
-                text += "• **" + sc + "**"
-                text += "  (" + str(len(settings["subcommunities"][sc]["users"])) + ")"
-                text += "\n"
-            text += "\n"
-            text += "Use `gc-join Game Name` to join one of them. "
-            text += "You will also **automatically join them** when Discord detects you playing that game.\n"
-            text += "These communities are created automatically when "
-            text += str(settings["playerthreshold"])
-            text += " or more people in this server play that game. They can also be created manually by an admin."
-            await channel.send(text)
-            await message.add_reaction("✅")
             return
 
         else:
