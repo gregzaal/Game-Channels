@@ -39,7 +39,7 @@ def write_json(fp, data):
     if not os.path.exists(d):
         os.makedirs(d)
     with open(fp, 'w') as f:
-        f.write(json.dumps(data, f, indent=4, sort_keys=True))
+        f.write(json.dumps(data, indent=4, sort_keys=True))
 
 
 def get_config():
